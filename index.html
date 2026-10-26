@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>La Generala</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="mesa">
+        <div id="dice-box"></div>
+        <div class="mesa-overlay" id="cargando">Cargando dados…</div>
+      </section>
+
+      <section class="panel">
+        <header class="panel-header">
+          <h1>La Generala</h1>
+          <p id="turno" class="turno"></p>
+          <p id="estado" class="estado"></p>
+        </header>
+
+        <div class="controles">
+          <div id="dados" class="dados" aria-label="Dados del tiro actual"></div>
+          <p class="ayuda">Tocá un dado para guardarlo entre tiros.</p>
+          <button id="tirar" class="btn-tirar" disabled>Tirar (1/3)</button>
+        </div>
+
+        <div class="planilla-scroll">
+          <table class="planilla">
+            <thead id="planilla-head"></thead>
+            <tbody id="planilla"></tbody>
+            <tfoot id="planilla-foot"></tfoot>
+          </table>
+        </div>
+
+        <button id="nueva" class="btn-secundario">Nueva partida</button>
+      </section>
+    </main>
+
+    <dialog id="config" class="config">
+      <form method="dialog" id="config-form">
+        <h2>Nueva partida</h2>
+        <label class="campo">
+          Cantidad de jugadores
+          <select id="cantidad">
+            <option>1</option>
+            <option selected>2</option>
+            <option>3</option>
+            <option>4</option>
+            <option>5</option>
+            <option>6</option>
+          </select>
+        </label>
+        <div id="nombres" class="nombres"></div>
+        <button class="btn-tirar" type="submit">Empezar</button>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
