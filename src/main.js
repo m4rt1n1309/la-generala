@@ -42,6 +42,7 @@ let estado = null;   // último estado de la partida que llegó
 let visto = null;    // el estado que la mesa 3D ya terminó de mostrar
 let animando = false;
 let mensaje = "";    // error puntual para mostrarle al jugador
+let verOpciones = null; // evento en el que el jugador tocó "Anotar" (para no adelantar los puntos)
 
 function mostrar(pantalla) {
   $("inicio").hidden = pantalla !== "inicio";
@@ -49,9 +50,10 @@ function mostrar(pantalla) {
 }
 
 async function alCambiar(nuevo) {
-  // Apartar un dado no mueve nada en la mesa: se muestra al toque, sin bloquear el siguiente click.
+  // Apartar un dado solo lo lleva a la bandeja: se muestra al toque, sin bloquear el siguiente click.
   if (visto && estado === visto && nuevo?.evento.n === visto.evento.n) {
     estado = visto = nuevo;
+    mesa.sincronizar(nuevo);
     render();
     programarBot();
     return;
@@ -336,6 +338,7 @@ function describir(s) {
   const texto = canto ? (mio ? `Cantaste ${canto}. ` : `${quien} cantó ${canto}. `) : "";
   if (!mio) return `${texto}${quien} va por el tiro ${s.tiro} de ${G.TIROS_POR_TURNO}.`;
   if (s.tiro >= G.TIROS_POR_TURNO) return `${texto}Último tiro: elegí dónde anotar.`;
+  if (verOpciones === s.evento.n) return `${texto}Elegí dónde anotar.`;
   return texto + (G.puedeCantar(s) ? "Podés cantar y volver a tirar, o anotar." : "Apartá dados y volvé a tirar, o anotá.");
 }
 
@@ -357,6 +360,16 @@ function renderBotones(s) {
   if (s.voltear.length) return;
   if (s.tiro >= G.TIROS_POR_TURNO) return cont.appendChild(boton("Sin tiros: anotá", "btn-tirar", null, true));
 
+  // Los puntos de cada jugada no se ven hasta que el jugador decide anotar (o se le terminan los tiros).
+  const viendo = verOpciones === s.evento.n;
+  const anotar =
+    s.tiro > 0 &&
+    boton(viendo ? "Seguir tirando" : "Anotar", "btn-tirar btn-anotar-turno", () => {
+      verOpciones = viendo ? null : s.evento.n;
+      render();
+    });
+  if (viendo) return cont.appendChild(anotar);
+
   const n = `(${s.tiro + 1}/${G.TIROS_POR_TURNO})`;
   if (G.puedeCantar(s)) {
     // Un botón por cada forma de repartir los dados que se tiran entre abajo y arriba.
@@ -374,6 +387,7 @@ function renderBotones(s) {
     const todos = s.tiro > 0 && s.guardados.every(Boolean);
     cont.appendChild(boton(`Tirar ${n}`, "btn-tirar", () => accion((e) => G.tirar(e)), todos));
   }
+  if (anotar) cont.appendChild(anotar);
 }
 
 function renderDados(s) {
@@ -442,7 +456,8 @@ function renderPlanilla(s) {
   });
   $("planilla-head").replaceChildren(head);
 
-  const opciones = puedoActuar(s) ? G.opciones(s) : [];
+  const mostrarPuntos = s.tiro >= G.TIROS_POR_TURNO || verOpciones === s.evento.n;
+  const opciones = puedoActuar(s) && mostrarPuntos ? G.opciones(s) : [];
   $("planilla").innerHTML = "";
   for (const { id, nombre } of G.CATEGORIAS) {
     const tr = document.createElement("tr");
