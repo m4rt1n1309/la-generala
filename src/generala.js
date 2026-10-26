@@ -18,7 +18,8 @@ export const CATEGORIAS = [
   { id: "doble", nombre: "Doble Generala" },
 ];
 
-// cantada: antes del 2.º y 3.º tiro se puede cantar "de arriba" o "de abajo".
+// cantada: antes del 2.º y 3.º tiro se canta cuántos de los dados que se tiran van "de abajo"
+// y cuántos "de arriba" (por ejemplo, con 4 dados: 2 de abajo y 2 de arriba).
 // obligada: las jugadas se anotan en orden, de Unos a Doble Generala.
 export const MODOS = {
   comun: { nombre: "Común", cantada: false, obligada: false },
@@ -82,8 +83,9 @@ const VACIO = () => ({
   tiro: 0,
   dados: [0, 0, 0, 0, 0],
   guardados: [false, false, false, false, false],
-  canto: "",       // "", "arriba" o "abajo": lo cantado para el último tiro
-  voltear: [],     // posiciones entre las que hay que elegir cuál dar vuelta (si se cantó de abajo)
+  canto: null,     // lo cantado para el último tiro: null o { abajo, arriba } (cuántos dados de cada uno)
+  voltear: [],     // posiciones entre las que hay que elegir cuáles dar vuelta (si se cantó alguno de abajo)
+  porVoltear: 0,   // cuántos dados quedan por dar vuelta
   cantos: 0,       // cantos hechos en el turno
 });
 
@@ -121,8 +123,10 @@ export function normalizar(s) {
     tiro: s.tiro || 0,
     dados: s.dados || v.dados,
     guardados: s.guardados || v.guardados,
-    canto: s.canto || "",
+    // Antes el canto era "arriba" o "abajo" (un solo dado de abajo): esos se leen como sin canto.
+    canto: typeof s.canto === "object" && s.canto ? { abajo: s.canto.abajo || 0, arriba: s.canto.arriba || 0 } : null,
     voltear: s.voltear || [],
+    porVoltear: s.voltear?.length ? s.porVoltear || 1 : 0,
     cantos: s.cantos || 0,
     ganadores: s.ganadores || [],
     servida: !!s.servida,
@@ -137,7 +141,7 @@ function exigirJugando(s) {
   if (s.estado !== "jugando") throw new Error("La partida terminó.");
 }
 function exigirSinVolteo(s) {
-  if (s.voltear.length) throw new Error("Primero elegí qué dado dar vuelta.");
+  if (s.voltear.length) throw new Error("Primero elegí qué dados dar vuelta.");
 }
 
 // ¿Se puede cantar antes del próximo tiro? Hace falta haber apartado al menos un dado
@@ -150,14 +154,14 @@ export function puedeCantar(s) {
   return apartados > 0 && apartados < 5;
 }
 
-// canto: "" (sin cantar), "arriba" o "abajo".
-export function tirar(estado, { canto = "", azar = dadoAlAzar } = {}) {
+// abajo: sin cantar (null) o cuántos de los dados que se tiran se cantan de abajo; el resto va de arriba.
+export function tirar(estado, { abajo = null, azar = dadoAlAzar } = {}) {
   const s = clonar(estado);
   exigirJugando(s);
   exigirSinVolteo(s);
   if (s.tiro >= TIROS_POR_TURNO) throw new Error("No te quedan tiros: anotá.");
-  if (canto && !["arriba", "abajo"].includes(canto)) throw new Error("Canto inválido.");
-  if (canto && !puedeCantar(s)) {
+  const canta = abajo !== null;
+  if (canta && !puedeCantar(s)) {
     throw new Error(
       MODOS[s.modo].cantada
         ? "Para cantar tenés que apartar al menos un dado (no pueden ir los 5 al cubilete)."
@@ -168,13 +172,17 @@ export function tirar(estado, { canto = "", azar = dadoAlAzar } = {}) {
   if (s.tiro === 0) s.guardados = [false, false, false, false, false];
   const slots = [0, 1, 2, 3, 4].filter((i) => !s.guardados[i]);
   if (!slots.length) throw new Error("Apartaste los 5 dados: anotá la jugada.");
+  if (canta && !(Number.isInteger(abajo) && abajo >= 0 && abajo <= slots.length)) {
+    throw new Error(`Hay que cantar entre 0 y ${slots.length} dados de abajo.`);
+  }
 
   for (const i of slots) s.dados[i] = azar();
   s.tiro++;
-  s.canto = canto;
-  if (canto) s.cantos++;
-  // Cantado de abajo: el jugador elige uno de los dados que salieron del cubilete y lo da vuelta.
-  s.voltear = canto === "abajo" ? slots : [];
+  s.canto = canta ? { abajo, arriba: slots.length - abajo } : null;
+  if (canta) s.cantos++;
+  // Los cantados de abajo: el jugador elige cuáles de los dados que salieron del cubilete da vuelta.
+  s.voltear = canta && abajo > 0 ? slots : [];
+  s.porVoltear = s.voltear.length ? abajo : 0;
   s.evento = evento(s, "tiro", { slots, valores: slots.map((i) => s.dados[i]) });
 
   if (s.tiro === 1 && esGenerala(s.dados)) {
@@ -185,15 +193,16 @@ export function tirar(estado, { canto = "", azar = dadoAlAzar } = {}) {
   return s;
 }
 
-// Da vuelta un dado (cantado de abajo): queda mostrando la cara opuesta, que suma 7 con la de arriba.
+// Da vuelta un dado cantado de abajo: queda mostrando la cara opuesta, que suma 7 con la de arriba.
 export function voltear(estado, slot) {
   const s = clonar(estado);
   exigirJugando(s);
-  if (!s.voltear.length) throw new Error("No cantaste de abajo.");
-  if (!s.voltear.includes(slot)) throw new Error("Solo podés dar vuelta un dado de los que tiraste.");
+  if (!s.voltear.length) throw new Error("No te quedan dados para dar vuelta.");
+  if (!s.voltear.includes(slot)) throw new Error("Solo podés dar vuelta un dado de los que tiraste (y una sola vez).");
   const antes = s.dados[slot];
   s.dados[slot] = 7 - antes;
-  s.voltear = [];
+  s.porVoltear--;
+  s.voltear = s.porVoltear > 0 ? s.voltear.filter((i) => i !== slot) : [];
   s.evento = evento(s, "vuelta", { slots: [slot], valores: [s.dados[slot]], antes });
   return s;
 }

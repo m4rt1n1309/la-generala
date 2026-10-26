@@ -62,7 +62,7 @@ test("cantada: no se canta con los 5 dados en el cubilete", () => {
   assert.equal(puedeCantar(s), false); // antes del primer tiro
   s = tirar(s, { azar: secuencia(1, 2, 3, 4, 6) });
   assert.equal(puedeCantar(s), false); // nada apartado
-  assert.throws(() => tirar(s, { canto: "abajo" }), /apartar al menos un dado/);
+  assert.throws(() => tirar(s, { abajo: 1 }), /apartar al menos un dado/);
   s = alternarGuardado(s, 0);
   assert.equal(puedeCantar(s), true);
 });
@@ -73,11 +73,13 @@ test("cantada de abajo: se da vuelta uno de los dados tirados y no consume tiro"
   s = alternarGuardado(s, 0);
   s = alternarGuardado(s, 1);
   s = alternarGuardado(s, 2);
-  s = tirar(s, { canto: "abajo", azar: secuencia(1, 5) });
+  assert.throws(() => tirar(s, { abajo: 3 }), /entre 0 y 2/);
+  s = tirar(s, { abajo: 1, azar: secuencia(1, 5) });
+  assert.deepEqual(s.canto, { abajo: 1, arriba: 1 });
   assert.deepEqual(s.voltear, [3, 4]);
   assert.equal(s.tiro, 2);
-  assert.throws(() => anotar(s, "poker"), /qué dado dar vuelta/);
-  assert.throws(() => tirar(s), /qué dado dar vuelta/);
+  assert.throws(() => anotar(s, "poker"), /qué dados dar vuelta/);
+  assert.throws(() => tirar(s), /qué dados dar vuelta/);
   assert.throws(() => voltear(s, 0), /de los que tiraste/); // los apartados no
   s = voltear(s, 3); // 1 → 6
   assert.deepEqual(s.dados, [6, 6, 6, 6, 5]);
@@ -86,7 +88,7 @@ test("cantada de abajo: se da vuelta uno de los dados tirados y no consume tiro"
   // Segundo canto en el tercer tiro
   assert.equal(puedeCantar(s), true);
   s = alternarGuardado(s, 3);
-  s = tirar(s, { canto: "abajo", azar: secuencia(1) });
+  s = tirar(s, { abajo: 1, azar: secuencia(1) });
   assert.deepEqual(s.voltear, [4]);
   s = voltear(s, 4);
   assert.deepEqual(s.dados, [6, 6, 6, 6, 6]);
@@ -96,21 +98,40 @@ test("cantada de abajo: se da vuelta uno de los dados tirados y no consume tiro"
   assert.equal(s.planillas.j0.generala, 50); // no es servida
 });
 
+test("cantada 2 de abajo y 2 de arriba: se dan vuelta 2 de los dados tirados", () => {
+  let s = partida("cantada");
+  s = tirar(s, { azar: secuencia(4, 1, 1, 6, 3) });
+  s = alternarGuardado(s, 0);
+  s = tirar(s, { abajo: 2, azar: secuencia(3, 3, 6, 4) });
+  assert.deepEqual(s.canto, { abajo: 2, arriba: 2 });
+  assert.deepEqual(s.voltear, [1, 2, 3, 4]);
+  assert.equal(s.porVoltear, 2);
+  s = voltear(s, 1); // 3 → 4
+  assert.deepEqual(s.voltear, [2, 3, 4]); // el mismo no se puede dar vuelta otra vez
+  assert.throws(() => voltear(s, 1), /una sola vez/);
+  assert.throws(() => anotar(s, "poker"), /qué dados dar vuelta/);
+  s = voltear(s, 3); // 6 → 1
+  assert.deepEqual(s.voltear, []);
+  assert.deepEqual(s.dados, [4, 4, 3, 1, 4]);
+  assert.equal(s.tiro, 2);
+});
+
 test("cantada de arriba no cambia nada", () => {
   let s = partida("cantada");
   s = tirar(s, { azar: secuencia(2, 2, 2, 4, 5) });
   s = alternarGuardado(s, 0);
-  s = tirar(s, { canto: "arriba", azar: secuencia(3, 3, 3, 3) });
+  s = tirar(s, { abajo: 0, azar: secuencia(3, 3, 3, 3) });
   assert.deepEqual(s.voltear, []);
   assert.deepEqual(s.dados, [2, 3, 3, 3, 3]);
-  assert.equal(s.canto, "arriba");
+  assert.deepEqual(s.canto, { abajo: 0, arriba: 4 });
+  assert.deepEqual(s.voltear, []);
 });
 
 test("en la común no se canta", () => {
   let s = tirar(partida(), { azar: secuencia(1, 2, 3, 4, 6) });
   s = alternarGuardado(s, 0);
   assert.equal(puedeCantar(s), false);
-  assert.throws(() => tirar(s, { canto: "abajo" }), /no se canta/);
+  assert.throws(() => tirar(s, { abajo: 1 }), /no se canta/);
 });
 
 test("obligada: solo se anota la siguiente jugada en orden", () => {
@@ -149,7 +170,8 @@ test("normalizar repone lo que Firebase no guarda", () => {
   guardado.planillas = { j0: [null, 3, 4] }; // así vuelve {"1": 3, "2": 4}
   const s = normalizar(guardado);
   assert.deepEqual(s.voltear, []);
-  assert.equal(s.canto, "");
+  assert.equal(s.canto, null);
+  assert.equal(s.porVoltear, 0);
   assert.deepEqual(s.planillas.j0, { 1: 3, 2: 4 });
   assert.deepEqual(s.planillas.j1, {});
 });

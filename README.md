@@ -43,16 +43,16 @@ Si cambiás `database.rules.json`, publicalas con `npm run deploy-rules` (o peg�
 
 - Hasta 3 tiros por turno. Tocá un dado del panel para apartarlo: no vuelve al cubilete.
 - Escalera 20, Full 30 y Póker 40 (+5 si salen servidas). Generala 50; servida gana la partida. Doble Generala 100, solo si ya anotaste una Generala. La escalera 3-4-5-6-1 también vale.
-- **Cantada:** antes del 2.º y del 3.º tiro, si apartaste al menos un dado (con los 5 en el cubilete no se canta), podés cantar:
-  - **de arriba:** los dados quedan como salen;
-  - **de abajo:** después de tirar elegís uno de los dados que salieron del cubilete y se da vuelta (muestra la cara de abajo, que suma 7 con la de arriba).
+- **Cantada:** antes del 2.º y del 3.º tiro, si apartaste al menos un dado (con los 5 en el cubilete no se canta), cantás cuántos de los dados que tirás van **de abajo** y cuántos **de arriba**. Por ejemplo, con 4 dados para tirar: 2 de abajo y 2 de arriba, 3 de abajo y 1 de arriba, etc.
+  - los **de arriba** quedan como salen;
+  - los **de abajo:** después de tirar elegís esa cantidad de dados entre los que salieron del cubilete y se dan vuelta (muestran la cara de abajo, que suma 7 con la de arriba).
   Cantar no gasta un tiro.
 - **Obligada:** las jugadas se anotan en orden, de Unos a Doble Generala. Si no sale, se tacha.
 - **Obligada cantada:** las dos cosas juntas.
 
 Online: uno crea la sala y pasa el código de 4 letras o el link; los demás entran con su nombre y el anfitrión empieza. Si alguien se desconecta, al volver a abrir el link vuelve a su lugar; si no vuelve, el anfitrión lo puede sacar (✕ al lado del nombre en la planilla). Con 💬 se chatea con todos los de la sala.
 
-**Bots:** en "En esta compu" se eligen cuántos (hasta completar 6 jugadores); online, el anfitrión los agrega con 🤖 en la sala de espera. Para decidir qué dados apartar, si cantar de abajo y dónde anotar, el bot prueba todas las combinaciones y simula tiradas (`src/bot.js`); promedia unos 150 puntos por partida. Online los bots juegan desde el dispositivo del anfitrión: si el anfitrión cierra la página, los bots esperan a que vuelva.
+**Bots:** en "En esta compu" se eligen cuántos (hasta completar 6 jugadores); online, el anfitrión los agrega con 🤖 en la sala de espera. Para decidir qué dados apartar, cuántos cantar de abajo y dónde anotar, el bot prueba todas las combinaciones y simula tiradas (`src/bot.js`); promedia unos 150 puntos por partida. Online los bots juegan desde el dispositivo del anfitrión: si el anfitrión cierra la página, los bots esperan a que vuelva.
 
 ## Estructura
 

@@ -8,10 +8,10 @@ const $ = (id) => document.getElementById(id);
 const DESCRIPCION_MODO = {
   comun: "Anotás cada jugada donde quieras.",
   cantada:
-    "Antes del 2.º y 3.º tiro, si apartaste al menos un dado, podés cantar de arriba o de abajo. " +
-    "De abajo: después de tirar das vuelta uno de los dados que salieron del cubilete.",
+    "Antes del 2.º y 3.º tiro, si apartaste al menos un dado, cantás cuántos de los dados que tirás van " +
+    "de abajo y cuántos de arriba (por ejemplo, 2 y 2). Después de tirar das vuelta esa cantidad de dados.",
   obligada: "Las jugadas se anotan en orden: Unos, Doses… hasta la Doble Generala.",
-  "obligada-cantada": "En orden de Unos a Doble Generala, y con cantos de arriba o de abajo.",
+  "obligada-cantada": "En orden de Unos a Doble Generala, y cantando cuántos dados van de abajo y cuántos de arriba.",
 };
 
 const guardado = {
@@ -324,16 +324,16 @@ function describir(s) {
   }
   const mio = esMiTurno(s);
   const quien = nombreDe(s, s.actual);
+  const canto = s.canto && `${s.canto.abajo} de abajo y ${s.canto.arriba} de arriba`;
   if (s.voltear.length) {
+    const faltan = s.porVoltear === 1 ? "1 dado" : `${s.porVoltear} dados`;
     return mio
-      ? "Cantaste de abajo: tocá uno de los dados que tiraste para darlo vuelta."
-      : `${quien} cantó de abajo y está eligiendo qué dado dar vuelta.`;
+      ? `Cantaste ${canto}: tocá ${faltan} de los que tiraste para dar vuelta.`
+      : `${quien} cantó ${canto} y está eligiendo qué dados dar vuelta (falta${s.porVoltear === 1 ? "" : "n"} ${faltan}).`;
   }
   if (s.tiro === 0) return mio ? "Tirá los dados." : `Esperando que ${quien} tire.`;
 
-  let texto = "";
-  if (s.canto === "arriba") texto = mio ? "Cantaste de arriba. " : `${quien} cantó de arriba. `;
-  if (s.canto === "abajo") texto = mio ? "Diste vuelta un dado. " : `${quien} dio vuelta un dado. `;
+  const texto = canto ? (mio ? `Cantaste ${canto}. ` : `${quien} cantó ${canto}. `) : "";
   if (!mio) return `${texto}${quien} va por el tiro ${s.tiro} de ${G.TIROS_POR_TURNO}.`;
   if (s.tiro >= G.TIROS_POR_TURNO) return `${texto}Último tiro: elegí dónde anotar.`;
   return texto + (G.puedeCantar(s) ? "Podés cantar y volver a tirar, o anotar." : "Apartá dados y volvé a tirar, o anotá.");
@@ -359,8 +359,17 @@ function renderBotones(s) {
 
   const n = `(${s.tiro + 1}/${G.TIROS_POR_TURNO})`;
   if (G.puedeCantar(s)) {
-    cont.appendChild(boton(`Cantar de arriba ${n}`, "btn-tirar", () => accion((e) => G.tirar(e, { canto: "arriba" }))));
-    cont.appendChild(boton(`Cantar de abajo ${n}`, "btn-tirar abajo", () => accion((e) => G.tirar(e, { canto: "abajo" }))));
+    // Un botón por cada forma de repartir los dados que se tiran entre abajo y arriba.
+    const tirados = s.guardados.filter((g) => !g).length;
+    const titulo = document.createElement("p");
+    titulo.className = "cantar-titulo";
+    titulo.textContent = `Cantá y tirá ${tirados === 1 ? "1 dado" : `${tirados} dados`} ${n}:`;
+    cont.appendChild(titulo);
+    for (let abajo = 0; abajo <= tirados; abajo++) {
+      const b = boton("", `btn-tirar btn-canto${abajo ? " abajo" : ""}`, () => accion((e) => G.tirar(e, { abajo })));
+      b.innerHTML = `<strong>${abajo}</strong> de abajo<br><strong>${tirados - abajo}</strong> de arriba`;
+      cont.appendChild(b);
+    }
   } else {
     const todos = s.tiro > 0 && s.guardados.every(Boolean);
     cont.appendChild(boton(`Tirar ${n}`, "btn-tirar", () => accion((e) => G.tirar(e)), todos));

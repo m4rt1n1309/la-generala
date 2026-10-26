@@ -5,18 +5,35 @@
 
 import DiceBox from "@3d-dice/dice-box-threejs";
 
+// Tamaño de los dados según la mesa: en la compu quedan como siempre (150) y en el celular
+// se achican para que los 5 entren sin chocarse ni superponerse.
+function tamanoDados(contenedor) {
+  const lado = Math.min(contenedor.clientWidth, contenedor.clientHeight);
+  return Math.round(Math.min(150, Math.max(40, lado * 0.14)));
+}
+
 export function crearMesa(selector) {
+  const contenedor = document.querySelector(selector);
   const box = new DiceBox(selector, {
     assetPath: import.meta.env.BASE_URL,
     sounds: false,
     theme_surface: "green-felt",
     theme_colorset: "white",
     theme_material: "plastic",
-    baseScale: 150,
+    baseScale: tamanoDados(contenedor),
     strength: 1.4,
   });
   const lista = box.initialize();
-  addEventListener("resize", () => lista.then(() => box.resizeWorld()));
+  // resizeWorld se suscribe solo al resize de la ventana: se llama una vez.
+  lista.then(() => box.resizeWorld());
+  addEventListener("resize", () => {
+    // Los dados nuevos salen con el tamaño de la mesa actual (por ejemplo, al girar el celular).
+    const tamano = tamanoDados(contenedor);
+    if (tamano !== box.DiceFactory.baseScale) {
+      box.DiceFactory.baseScale = tamano;
+      box.DiceFactory.geometries = {};
+    }
+  });
 
   let slots = [];      // posición del dado en la partida (0-4) → índice en box.diceList
   let ultimo = null;   // número del último evento mostrado

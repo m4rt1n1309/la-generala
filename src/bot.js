@@ -1,6 +1,6 @@
 // Bot de Generala: decide la próxima acción del jugador de turno.
 //
-// Para elegir qué dados apartar (y si conviene cantar de abajo) prueba las 32 combinaciones
+// Para elegir qué dados apartar (y cuántos cantar de abajo) prueba las 32 combinaciones
 // posibles y simula unas cuantas tiradas de cada una, quedándose con la que en promedio deja
 // la mejor jugada para anotar. Sin dependencias de UI: se usa igual en local y online.
 
@@ -39,23 +39,38 @@ function apartarRapido(dados) {
   return dados.map((d) => d === cara);
 }
 
-// Valor esperado de apartar `guardados`, cantar `canto` y tirar con `quedan` tiros por delante.
-// Todas las opciones se simulan con las mismas tiradas (`tiradas`), así la comparación entre
-// ellas no depende de la suerte de cada una.
-function simular(estado, guardados, canto, quedan, tiradas) {
+// Todas las formas de elegir `k` posiciones de `posiciones`.
+function combinaciones(posiciones, k) {
+  if (k === 0) return [[]];
+  if (posiciones.length < k) return [];
+  const [primera, ...resto] = posiciones;
+  return [...combinaciones(resto, k - 1).map((c) => [primera, ...c]), ...combinaciones(resto, k)];
+}
+
+// Las `k` posiciones de `candidatos` que conviene dar vuelta, y lo que vale la jugada que quedaría.
+function mejorVuelta(estado, dados, candidatos, k) {
+  let mejor = null;
+  for (const elegidos of combinaciones(candidatos, k)) {
+    const vuelta = dados.slice();
+    for (const i of elegidos) vuelta[i] = 7 - vuelta[i];
+    const valor = mejorJugada(estado, vuelta, false).valor;
+    if (!mejor || valor > mejor.valor) mejor = { elegidos, valor };
+  }
+  return mejor;
+}
+
+// Valor esperado de apartar `guardados`, cantar `abajo` dados de abajo (null: sin cantar) y tirar
+// con `quedan` tiros por delante. Todas las opciones se simulan con las mismas tiradas (`tiradas`),
+// así la comparación entre ellas no depende de la suerte de cada una.
+function simular(estado, guardados, abajo, quedan, tiradas) {
+  const tirados = [0, 1, 2, 3, 4].filter((i) => !guardados[i]);
   let total = 0;
   for (const [primera, segundaTirada] of tiradas) {
     let dados = estado.dados.map((d, i) => (guardados[i] ? d : primera[i]));
     let valor;
-    if (canto === "abajo") {
-      // Hay que dar vuelta uno de los que salieron: el mejor posible.
-      valor = -Infinity;
-      for (let i = 0; i < 5; i++) {
-        if (guardados[i]) continue;
-        const vuelta = dados.slice();
-        vuelta[i] = 7 - vuelta[i];
-        valor = Math.max(valor, mejorJugada(estado, vuelta, false).valor);
-      }
+    if (abajo) {
+      // Hay que dar vuelta `abajo` de los que salieron: los mejores posibles.
+      valor = mejorVuelta(estado, dados, tirados, abajo).valor;
     } else {
       if (quedan > 1) {
         const segunda = apartarRapido(dados);
@@ -84,39 +99,31 @@ function elegirJugada(estado, azar) {
   for (let mascara = 0; mascara < 31; mascara++) {
     const guardados = [0, 1, 2, 3, 4].map((i) => !!(mascara & (1 << i)));
     const apartados = guardados.filter(Boolean).length;
-    // Con al menos un dado apartado se puede cantar; de arriba es igual que no cantar.
-    const cantos = cantada && apartados > 0 ? ["", "abajo"] : [""];
-    for (const canto of cantos) {
-      const valor = simular(s, guardados, canto, quedan, tiradas);
-      if (valor > mejor.valor) mejor = { tipo: "tirar", guardados, canto, valor };
+    // Con al menos un dado apartado se puede cantar cuántos van de abajo (0 a los que se tiran);
+    // todos de arriba es igual que no cantar.
+    const cantos = cantada && apartados > 0 ? Array.from({ length: 6 - apartados }, (_, k) => k) : [null];
+    for (const abajo of cantos) {
+      const valor = simular(s, guardados, abajo, quedan, tiradas);
+      if (valor > mejor.valor) mejor = { tipo: "tirar", guardados, abajo, valor };
     }
   }
   return mejor;
 }
 
 // Devuelve la próxima acción del jugador de turno:
-//   { tipo: "tirar", guardados?, canto? } | { tipo: "voltear", slot } | { tipo: "anotar", id }
+//   { tipo: "tirar", guardados?, abajo? } | { tipo: "voltear", slot } | { tipo: "anotar", id }
 export function decidir(estado, { azar = dadoAlAzar } = {}) {
   const s = G.normalizar(estado);
   if (s.voltear.length) {
-    // Cantó de abajo: da vuelta el dado que deja mejor la jugada.
-    let mejor = null;
-    for (const slot of s.voltear) {
-      const dados = s.dados.slice();
-      dados[slot] = 7 - dados[slot];
-      const valor = mejorJugada(s, dados, false).valor;
-      if (!mejor || valor > mejor.valor) mejor = { slot, valor };
-    }
-    return { tipo: "voltear", slot: mejor.slot };
+    // Cantó dados de abajo: da vuelta (de a uno) los que dejan mejor la jugada.
+    return { tipo: "voltear", slot: mejorVuelta(s, s.dados, s.voltear, s.porVoltear).elegidos[0] };
   }
   if (s.tiro === 0) return { tipo: "tirar" };
   if (s.tiro >= G.TIROS_POR_TURNO) return { tipo: "anotar", id: mejorJugada(s, s.dados, false).id };
 
   const jugada = elegirJugada(s, azar);
   if (jugada.tipo === "anotar") return { tipo: "anotar", id: jugada.id };
-  // En la cantada, si no conviene cantar de abajo canta de arriba (es lo mismo que no cantar).
-  const puedeCantar = G.MODOS[s.modo].cantada && jugada.guardados.some(Boolean);
-  return { tipo: "tirar", guardados: jugada.guardados, canto: jugada.canto || (puedeCantar ? "arriba" : "") };
+  return { tipo: "tirar", guardados: jugada.guardados, abajo: jugada.abajo };
 }
 
 // Aplica una acción del bot en uno o dos pasos (primero aparta los dados, después tira),
@@ -128,7 +135,7 @@ export function pasos(estado, accion) {
     case "anotar":
       return [(s) => G.anotar(s, accion.id)];
     case "tirar": {
-      const tirar = (s) => G.tirar(s, { canto: accion.canto || "" });
+      const tirar = (s) => G.tirar(s, { abajo: accion.abajo ?? null });
       if (!accion.guardados || estado.tiro === 0) return [tirar];
       return [(s) => G.fijarGuardados(s, accion.guardados), tirar];
     }

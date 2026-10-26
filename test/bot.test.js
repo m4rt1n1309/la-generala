@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { decidir, pasos } from "../src/bot.js";
-import { nuevaPartida, tirar, MODOS, totalPuntos } from "../src/generala.js";
+import { nuevaPartida, tirar, voltear, MODOS, totalPuntos } from "../src/generala.js";
 
 const secuencia = (...vals) => {
   let i = 0;
@@ -48,8 +48,18 @@ test("cantado de abajo da vuelta el dado que más le sirve", () => {
   let s = conBot("cantada");
   s = tirar(s, { azar: secuencia(4, 4, 4, 4, 2) });
   s = { ...s, guardados: [true, true, true, true, false] };
-  s = tirar(s, { canto: "abajo", azar: secuencia(3) }); // el 3 dado vuelta es 4: generala
+  s = tirar(s, { abajo: 1, azar: secuencia(3) }); // el 3 dado vuelta es 4: generala
   assert.deepEqual(decidir(s), { tipo: "voltear", slot: 4 });
+});
+
+test("cantando varios de abajo da vuelta los que más le sirven", () => {
+  let s = conBot("cantada");
+  s = tirar(s, { azar: secuencia(5, 5, 1, 6, 2) });
+  s = { ...s, guardados: [true, true, false, false, false] };
+  s = tirar(s, { abajo: 2, azar: secuencia(2, 5, 2) }); // dando vuelta los dos 2 queda generala de 5
+  s = voltear(s, decidir(s).slot);
+  s = voltear(s, decidir(s).slot);
+  assert.deepEqual(s.dados, [5, 5, 5, 5, 5]);
 });
 
 for (const modo of Object.keys(MODOS)) {
