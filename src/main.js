@@ -1,6 +1,7 @@
 import { crearMesa } from "./mesa.js";
 import * as G from "./generala.js";
 import * as red from "./red.js";
+import * as Bot from "./bot.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -28,6 +29,8 @@ const guardado = {
   },
 };
 
+const NOMBRES_BOTS = ["Bot Tito", "Bot Lola", "Bot Pancho", "Bot Coca", "Bot Ramón", "Bot Chela"];
+
 const mesa = crearMesa("#dice-box");
 mesa.lista.then(() => ($("cargando").hidden = true));
 
@@ -50,8 +53,10 @@ async function alCambiar(nuevo) {
   if (visto && estado === visto && nuevo?.evento.n === visto.evento.n) {
     estado = visto = nuevo;
     render();
+    programarBot();
     return;
   }
+  if (nuevo?.evento.n !== estado?.evento.n) mensaje = ""; // un error viejo no queda colgado
   estado = nuevo;
   animando = true;
   render();
@@ -60,10 +65,11 @@ async function alCambiar(nuevo) {
     visto = nuevo;
     animando = false;
     render();
+    programarBot();
   }
 }
 
-const esMiTurno = (s) => juego?.tipo === "local" || s.actual === juego?.uid;
+const esMiTurno = (s) => (juego?.tipo === "local" ? !G.esBot(s) : s.actual === juego?.uid);
 const puedoActuar = (s) => s && s.estado === "jugando" && esMiTurno(s) && !animando;
 
 async function accion(fn) {
@@ -102,6 +108,15 @@ function renderNombres() {
   }
 }
 
+// Hasta 6 jugadores entre personas y bots.
+function renderOpcionesBots() {
+  const humanos = Number($("cantidad").value);
+  const previo = Number($("bots").value || guardado.leer("bots") || 0);
+  const max = 6 - humanos;
+  $("bots").innerHTML = Array.from({ length: max + 1 }, (_, n) => `<option value="${n}">${n === 0 ? "Sin bots" : n}</option>`).join("");
+  $("bots").value = String(Math.min(previo, max));
+}
+
 function errorInicio(texto) {
   $("inicio-error").textContent = texto;
 }
@@ -111,6 +126,8 @@ function irAlInicio(aviso = "") {
   juego = null;
   estado = visto = null;
   mesa.sincronizar(null);
+  chatVistoHasta = 0;
+  $("chat").hidden = true;
   history.replaceState(null, "", location.pathname + (location.search.includes("emulador") ? "?emulador" : ""));
   errorInicio(aviso);
   mostrar("inicio");
@@ -121,6 +138,9 @@ function jugarLocal() {
   const modo = $("modo").value;
   const inputs = [...$("nombres").querySelectorAll("input")];
   const jugadores = inputs.map((el, i) => ({ id: `j${i}`, nombre: el.value.trim() || `Jugador ${i + 1}` }));
+  const bots = Number($("bots").value);
+  for (let i = 0; i < bots; i++) jugadores.push({ id: `bot-${i}`, nombre: NOMBRES_BOTS[i], bot: true });
+  guardado.escribir("bots", String(bots));
   guardado.escribir("nombres", JSON.stringify(inputs.map((el) => el.value.trim())));
   guardado.escribir("modo", modo);
   juego = { tipo: "local" };
@@ -220,7 +240,7 @@ function renderLobby() {
     const nombre = document.createElement("span");
     nombre.textContent = j.nombre;
     li.appendChild(nombre);
-    const etiquetas = [j.id === uid && "vos", j.id === sala.host && "anfitrión", j.online === false && "desconectado"]
+    const etiquetas = [j.id === uid && "vos", j.id === sala.host && "anfitrión", j.bot && "bot", !j.bot && j.online === false && "desconectado"]
       .filter(Boolean)
       .join(" · ");
     if (etiquetas) {
@@ -238,6 +258,7 @@ function renderLobby() {
     $("lobby-jugadores").appendChild(li);
   }
 
+  $("agregar-bot").hidden = !soyHost || jugadores.length >= 6;
   $("empezar").hidden = !soyHost;
   $("empezar").disabled = jugadores.length < 2;
   $("empezar").textContent = jugadores.length < 2 ? "Esperando jugadores…" : "Empezar";
@@ -249,8 +270,18 @@ async function empezarOnline() {
   const { sala, codigo } = juego;
   $("lobby-error").textContent = "";
   try {
-    const jugadores = jugadoresDeSala(sala).map((j) => ({ id: j.id, nombre: j.nombre }));
+    const jugadores = jugadoresDeSala(sala).map((j) => ({ id: j.id, nombre: j.nombre, bot: !!j.bot }));
     await red.empezar(codigo, G.nuevaPartida({ modo: sala.modo, jugadores }));
+  } catch (err) {
+    $("lobby-error").textContent = err.message;
+  }
+}
+
+async function agregarBotOnline() {
+  const usados = new Set(jugadoresDeSala(juego.sala).map((j) => j.nombre));
+  const nombre = NOMBRES_BOTS.find((n) => !usados.has(n)) || "Bot";
+  try {
+    await red.agregarBot(juego.codigo, nombre);
   } catch (err) {
     $("lobby-error").textContent = err.message;
   }
@@ -383,8 +414,8 @@ function renderPlanilla(s) {
   s.jugadores.forEach((j, i) => {
     const th = document.createElement("th");
     if (activo(i)) th.className = "actual";
-    const desconectado = online && sala?.jugadores?.[j.id]?.online === false;
-    th.innerHTML = `${desconectado ? '<span class="punto-off" title="Desconectado"></span>' : ""}${esc(j.nombre)}`;
+    const desconectado = online && !j.bot && sala?.jugadores?.[j.id]?.online === false;
+    th.innerHTML = `${desconectado ? '<span class="punto-off" title="Desconectado"></span>' : ""}${j.bot ? "🤖 " : ""}${esc(j.nombre)}`;
     th.title = j.nombre;
     if (soyHost && desconectado && j.id !== juego.uid) {
       th.appendChild(
@@ -444,6 +475,7 @@ function renderPlanilla(s) {
 
 function render() {
   if (juego?.tipo === "online" && juego.sala && !juego.sala.partida) renderLobby();
+  renderChat();
 
   const s = visto || estado;
   const online = juego?.tipo === "online";
@@ -498,9 +530,110 @@ function finAccion() {
   }
 }
 
+// --- Bots ---
+// Los bots juegan desde este dispositivo: en local siempre, online solo en el del anfitrión.
+// Cada paso espera un poco para que se vea lo que hacen.
+
+let botTimer = null;
+let botPlan = null; // { clave, pasos }: lo que el bot decidió hacer en este tiro
+
+function programarBot() {
+  clearTimeout(botTimer);
+  const s = visto;
+  if (!s || animando || s.estado !== "jugando" || !G.esBot(s)) return;
+  if (juego?.tipo === "online" && juego.sala?.host !== juego.uid) return;
+  botTimer = setTimeout(pasoBot, 900);
+}
+
+async function pasoBot() {
+  const s = estado;
+  if (!s || s !== visto || animando || s.estado !== "jugando" || !G.esBot(s)) return;
+  const clave = `${s.actual}:${s.evento.n}:${s.tiro}`;
+  if (botPlan?.clave !== clave) botPlan = { clave, pasos: Bot.pasos(s, Bot.decidir(s)) };
+  const paso = botPlan.pasos.shift();
+  if (!paso) return (botPlan = null);
+  try {
+    if (juego.tipo === "local") await alCambiar(paso(s));
+    else await red.jugar(juego.codigo, paso);
+  } catch (err) {
+    console.error("Bot:", err);
+    botPlan = null;
+    botTimer = setTimeout(pasoBot, 2000); // reintenta con lo que haya en la mesa
+  }
+}
+
+// --- Chat ---
+
+let chatVistoHasta = 0; // hora del último mensaje leído
+
+function renderChat() {
+  const online = juego?.tipo === "online" && !!juego.sala;
+  $("chat-abrir").hidden = !online || !$("chat").hidden;
+  if (!online) return;
+  const mensajes = Object.values(juego.sala.chat || {})
+    .sort((a, b) => (a.en || 0) - (b.en || 0))
+    .slice(-50);
+  const abierto = !$("chat").hidden;
+  if (abierto && mensajes.length) chatVistoHasta = Math.max(chatVistoHasta, mensajes.at(-1).en || 0);
+  const nuevos = mensajes.filter((m) => m.uid !== juego.uid && (m.en || 0) > chatVistoHasta).length;
+  $("chat-nuevos").hidden = !nuevos;
+  $("chat-nuevos").textContent = nuevos > 9 ? "9+" : String(nuevos);
+
+  const lista = $("chat-mensajes");
+  const alFondo = lista.scrollHeight - lista.scrollTop - lista.clientHeight < 40;
+  lista.innerHTML = "";
+  if (!mensajes.length) {
+    const li = document.createElement("li");
+    li.className = "chat-vacio";
+    li.textContent = "Todavía no hay mensajes.";
+    lista.appendChild(li);
+  }
+  for (const m of mensajes) {
+    const li = document.createElement("li");
+    if (m.uid === juego.uid) li.className = "mio";
+    const quien = document.createElement("strong");
+    quien.textContent = m.nombre;
+    const texto = document.createElement("span");
+    texto.textContent = m.texto;
+    li.append(quien, texto);
+    lista.appendChild(li);
+  }
+  if (alFondo || abierto) lista.scrollTop = lista.scrollHeight;
+}
+
+function abrirChat(abrir) {
+  $("chat").hidden = !abrir;
+  renderChat();
+  if (abrir) {
+    $("chat-mensajes").scrollTop = $("chat-mensajes").scrollHeight;
+    $("chat-texto").focus();
+  }
+}
+
+async function enviarChat(e) {
+  e.preventDefault();
+  const texto = $("chat-texto").value.trim();
+  if (!texto || juego?.tipo !== "online") return;
+  const nombre = juego.sala?.jugadores?.[juego.uid]?.nombre || "?";
+  $("chat-texto").value = "";
+  try {
+    await red.enviarMensaje(juego.codigo, nombre, texto);
+  } catch (err) {
+    $("chat-texto").value = texto;
+    console.error("Chat:", err);
+  }
+}
+
 // --- Eventos ---
 
-$("cantidad").addEventListener("change", renderNombres);
+$("cantidad").addEventListener("change", () => {
+  renderNombres();
+  renderOpcionesBots();
+});
+$("agregar-bot").addEventListener("click", agregarBotOnline);
+$("chat-abrir").addEventListener("click", () => abrirChat(true));
+$("chat-cerrar").addEventListener("click", () => abrirChat(false));
+$("chat-form").addEventListener("submit", enviarChat);
 $("modo").addEventListener("change", () => ($("modo-desc").textContent = DESCRIPCION_MODO[$("modo").value]));
 $("jugar-local").addEventListener("click", jugarLocal);
 $("crear-sala").addEventListener("click", crearSala);
@@ -528,6 +661,7 @@ $("modo-desc").textContent = DESCRIPCION_MODO[modoInicial];
 const guardadosNombres = JSON.parse(guardado.leer("nombres") || "[]");
 if (guardadosNombres.length) $("cantidad").value = String(Math.min(Math.max(guardadosNombres.length, 1), 6));
 renderNombres();
+renderOpcionesBots();
 $("mi-nombre").value = guardado.leer("nombre") || "";
 
 if (!red.disponible) {

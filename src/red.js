@@ -3,17 +3,19 @@
 // salas/{código}/
 //   host                 uid de quien creó la sala (solo él empieza la partida y saca jugadores)
 //   creada               hora de creación
+//   actividad            última vez que alguien hizo algo; a las 24 h sin uso la sala se puede borrar
 //   modo                 "comun" | "cantada" | "obligada" | "obligada-cantada"
-//   jugadores/{uid}      { nombre, unido, online }
-//   partida              estado de generala.js; lo escribe el jugador de turno (o el host)
+//   jugadores/{uid}      { nombre, unido, online, bot? }  (los bots tienen id "bot-…" y los maneja el host)
+//   partida              estado de generala.js; lo escribe el jugador de turno (o el host, que mueve a los bots)
+//   chat/{id}            { uid, nombre, texto, en }
 
 import { initializeApp } from "firebase/app";
 import {
   getAuth, initializeAuth, inMemoryPersistence, signInAnonymously, onAuthStateChanged, connectAuthEmulator,
 } from "firebase/auth";
 import {
-  getDatabase, ref, onValue, get, set, update, remove, runTransaction, onDisconnect, serverTimestamp,
-  goOffline, goOnline, connectDatabaseEmulator,
+  getDatabase, ref, onValue, get, set, update, remove, push, runTransaction, onDisconnect, serverTimestamp,
+  query, orderByChild, endAt, limitToFirst, goOffline, goOnline, connectDatabaseEmulator,
 } from "firebase/database";
 import { firebaseConfig } from "./firebase-config.js";
 import { normalizar } from "./generala.js";
@@ -108,10 +110,12 @@ export async function crearSala({ nombre, modo }) {
       await update(salaRef(codigo), {
         host: uid,
         creada: serverTimestamp(),
+        actividad: serverTimestamp(),
         modo,
         [`jugadores/${uid}`]: { nombre, unido: serverTimestamp(), online: true },
       });
       await marcarPresencia(codigo, uid);
+      limpiarSalasViejas();
       return codigo;
     } catch (err) {
       if (!esRechazo(err)) throw err;
@@ -140,6 +144,28 @@ export async function unirse(codigo, nombre) {
     online: true,
   });
   await marcarPresencia(codigo, uid);
+  tocar(codigo);
+}
+
+// Anota que hubo actividad en la sala (para no borrarla mientras se usa).
+const tocar = (codigo) => set(salaRef(codigo, "actividad"), serverTimestamp()).catch(() => {});
+
+const DIA = 24 * 60 * 60 * 1000;
+
+// No hay servidor que borre las salas abandonadas: cada vez que alguien crea una sala, se borran
+// hasta 20 que lleven más de 24 h sin actividad. Las reglas solo permiten borrar salas así de viejas.
+export async function limpiarSalasViejas() {
+  try {
+    // 10 minutos de margen por si el reloj de este dispositivo está adelantado.
+    const viejas = query(ref(db, "salas"), orderByChild("actividad"), endAt(Date.now() - DIA - 10 * 60 * 1000), limitToFirst(20));
+    const snap = await get(viejas);
+    const codigos = Object.keys(snap.val() || {});
+    await Promise.all(codigos.map((c) => remove(salaRef(c)).catch((err) => console.warn(`No se pudo borrar ${c}:`, err))));
+    return codigos;
+  } catch (err) {
+    console.warn("No se pudieron revisar las salas viejas:", err);
+    return [];
+  }
 }
 
 // `online` pasa a false solo cuando se corta la conexión, y vuelve a true al reconectar.
@@ -179,8 +205,26 @@ export function escucharSala(codigo, cb) {
 }
 
 export const cambiarModo = (codigo, modo) => set(salaRef(codigo, "modo"), modo);
-export const empezar = (codigo, partida) => set(salaRef(codigo, "partida"), partida);
-export const volverASala = (codigo) => remove(salaRef(codigo, "partida"));
+export async function empezar(codigo, partida) {
+  await set(salaRef(codigo, "partida"), partida);
+  tocar(codigo);
+}
+export async function volverASala(codigo) {
+  await remove(salaRef(codigo, "partida"));
+  tocar(codigo);
+}
+
+export async function agregarBot(codigo, nombre) {
+  const id = `bot-${Array.from(crypto.getRandomValues(new Uint32Array(2)), (n) => n.toString(36)).join("")}`;
+  await set(salaRef(codigo, `jugadores/${id}`), { nombre, unido: serverTimestamp(), online: true, bot: true });
+  tocar(codigo);
+}
+
+export async function enviarMensaje(codigo, nombre, texto) {
+  const uid = await entrar();
+  await push(salaRef(codigo, "chat"), { uid, nombre, texto: texto.slice(0, 200), en: serverTimestamp() });
+  tocar(codigo);
+}
 
 export async function sacarJugador(codigo, uid, quitarDePartida) {
   if (quitarDePartida) await jugar(codigo, (s) => quitarDePartida(s, uid));
@@ -207,5 +251,6 @@ export async function jugar(codigo, accion) {
   );
   if (error) throw error;
   if (!r.committed) throw new Error("No se pudo guardar la jugada. Probá de nuevo.");
+  tocar(codigo);
   return normalizar(r.snapshot.val());
 }

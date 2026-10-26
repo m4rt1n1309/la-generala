@@ -1,13 +1,20 @@
 {
   "rules": {
     "salas": {
+      ".indexOn": ["actividad"],
+      ".read": "auth != null && query.orderByChild === 'actividad' && query.limitToFirst <= 20",
       "$codigo": {
         ".read": true,
+        ".write": "auth != null && !newData.exists() && (!data.child('actividad').exists() || data.child('actividad').val() < now - 86400000)",
         "host": {
           ".write": "auth != null && !data.exists() && newData.val() === auth.uid"
         },
         "creada": {
           ".write": "auth != null && !data.exists()",
+          ".validate": "newData.val() === now"
+        },
+        "actividad": {
+          ".write": "auth != null && (newData.parent().child('host').val() === auth.uid || root.child('salas').child($codigo).child('jugadores').child(auth.uid).exists())",
           ".validate": "newData.val() === now"
         },
         "modo": {
@@ -23,6 +30,17 @@
         "partida": {
           ".write": "auth != null && (root.child('salas').child($codigo).child('host').val() === auth.uid || (data.exists() && data.child('estado').val() === 'jugando' && data.child('actual').val() === auth.uid))",
           ".validate": "!newData.exists() || newData.hasChildren(['modo', 'jugadores', 'turno', 'actual', 'estado'])"
+        },
+        "chat": {
+          "$id": {
+            ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid && root.child('salas').child($codigo).child('jugadores').child(auth.uid).exists()",
+            ".validate": "newData.hasChildren(['uid', 'nombre', 'texto', 'en'])",
+            "uid": { ".validate": "newData.isString()" },
+            "nombre": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "texto": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+            "en": { ".validate": "newData.val() === now" },
+            "$otro": { ".validate": false }
+          }
         },
         "$otro": { ".validate": false }
       }

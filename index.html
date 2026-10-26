@@ -71,6 +71,10 @@
             </select>
           </label>
           <div id="nombres" class="nombres"></div>
+          <label class="campo">
+            Bots
+            <select id="bots"></select>
+          </label>
           <button id="jugar-local" class="btn-tirar">Jugar acá</button>
         </div>
 
@@ -104,6 +108,7 @@
 
         <h3>Jugadores</h3>
         <ul id="lobby-jugadores" class="lista-jugadores"></ul>
+        <button id="agregar-bot" class="btn-secundario">🤖 Agregar bot</button>
 
         <button id="empezar" class="btn-tirar">Empezar</button>
         <p id="lobby-espera" class="ayuda"></p>
@@ -111,6 +116,22 @@
         <p id="lobby-error" class="error" role="alert"></p>
       </div>
     </section>
+
+    <!-- Chat de la sala (solo online) -->
+    <button id="chat-abrir" class="btn-chat" hidden>
+      💬 Chat <span id="chat-nuevos" class="badge" hidden></span>
+    </button>
+    <aside id="chat" class="chat" hidden aria-label="Chat de la sala">
+      <header>
+        <strong>Chat de la sala</strong>
+        <button id="chat-cerrar" class="btn-mini" aria-label="Cerrar chat">✕</button>
+      </header>
+      <ol id="chat-mensajes" class="chat-mensajes"></ol>
+      <form id="chat-form" class="chat-form">
+        <input id="chat-texto" maxlength="200" placeholder="Escribí un mensaje…" autocomplete="off" aria-label="Mensaje" />
+        <button class="btn-tirar">Enviar</button>
+      </form>
+    </aside>
 
     <script type="module" src="./src/main.js"></script>
   </body>

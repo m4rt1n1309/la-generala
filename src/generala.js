@@ -87,13 +87,13 @@ const VACIO = () => ({
   cantos: 0,       // cantos hechos en el turno
 });
 
-// jugadores: [{ id, nombre }]
+// jugadores: [{ id, nombre, bot? }]
 export function nuevaPartida({ modo = "comun", jugadores }) {
   if (!MODOS[modo]) throw new Error("Modo de juego desconocido.");
   if (!jugadores?.length) throw new Error("Hace falta al menos un jugador.");
   return {
     modo,
-    jugadores: jugadores.map(({ id, nombre }) => ({ id, nombre })),
+    jugadores: jugadores.map(({ id, nombre, bot }) => (bot ? { id, nombre, bot: true } : { id, nombre })),
     planillas: Object.fromEntries(jugadores.map((j) => [j.id, {}])),
     turno: 0,
     actual: jugadores[0].id,
@@ -197,6 +197,15 @@ export function voltear(estado, slot) {
   s.evento = evento(s, "vuelta", { slots: [slot], valores: [s.dados[slot]], antes });
   return s;
 }
+
+// Aparta exactamente los dados indicados (lo usan los bots para elegir todos de una).
+export function fijarGuardados(estado, guardados) {
+  let s = clonar(estado);
+  for (let i = 0; i < 5; i++) if (s.guardados[i] !== !!guardados[i]) s = alternarGuardado(s, i);
+  return s;
+}
+
+export const esBot = (estado, id = estado.actual) => !!estado.jugadores.find((j) => j.id === id)?.bot;
 
 export function alternarGuardado(estado, slot) {
   const s = clonar(estado);

@@ -316,3 +316,83 @@ button { font: inherit; }
 .lista-jugadores li small { color: var(--suave); }
 .lista-jugadores li .btn-mini { margin-left: auto; }
 .lista-jugadores li.offline span { color: var(--suave); }
+
+/* --- Chat de la sala --- */
+
+.btn-chat {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 20;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--fieltro);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.badge {
+  display: inline-block;
+  min-width: 20px;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--acento);
+  font-size: 0.75rem;
+  text-align: center;
+}
+.chat {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 20;
+  width: min(340px, calc(100vw - 32px));
+  height: min(420px, calc(100vh - 32px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+.chat header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--fieltro);
+  color: #fff;
+}
+.chat-mensajes {
+  flex: 1;
+  margin: 0;
+  padding: 10px 12px;
+  list-style: none;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.chat-mensajes li {
+  max-width: 85%;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--borde);
+  overflow-wrap: anywhere;
+}
+.chat-mensajes li strong { display: block; font-size: 0.75rem; color: var(--suave); }
+.chat-mensajes li.mio { align-self: flex-end; background: #e8f3ec; }
+.chat-mensajes li.chat-vacio { align-self: center; border: none; background: none; color: var(--suave); }
+.chat-form { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--borde); }
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+}
+.chat-form .btn-tirar { padding: 8px 12px; }
