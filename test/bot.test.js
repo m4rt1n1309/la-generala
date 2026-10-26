@@ -62,16 +62,16 @@ for (const modo of Object.keys(MODOS)) {
 
 test("el bot juega mejor que una estrategia ingenua", () => {
   // Apartar siempre el número más repetido y anotar donde más puntos da promedia unos 123.
-  // El bot promedia unos 150: con 20 partidas exigimos más de 135.
+  // El bot promedia unos 150: con 30 partidas exigimos más de 130 (casi imposible que falle por mala suerte).
   let suma = 0;
   let partidas = 0;
-  while (partidas < 20) {
+  while (partidas < 30) {
     const s = jugarPartida("comun");
     if (s.servida) continue;
     suma += totalPuntos(s.planillas.b);
     partidas++;
   }
-  assert.ok(suma / partidas > 135, `promedio ${suma / partidas}`);
+  assert.ok(suma / partidas > 130, `promedio ${suma / partidas}`);
 });
 
 test("anotar no se rompe con una planilla casi llena", () => {

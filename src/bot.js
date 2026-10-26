@@ -12,7 +12,7 @@ const ESPERADO = {
   1: 2, 2: 5, 3: 8, 4: 11, 5: 14, 6: 17,
   escalera: 8, full: 12, poker: 14, generala: 10, doble: 2,
 };
-const SIMULACIONES = 80;
+const SIMULACIONES = 150;
 
 const dadoAlAzar = () => 1 + Math.floor(Math.random() * 6);
 
@@ -40,10 +40,12 @@ function apartarRapido(dados) {
 }
 
 // Valor esperado de apartar `guardados`, cantar `canto` y tirar con `quedan` tiros por delante.
-function simular(estado, guardados, canto, quedan, azar) {
+// Todas las opciones se simulan con las mismas tiradas (`tiradas`), así la comparación entre
+// ellas no depende de la suerte de cada una.
+function simular(estado, guardados, canto, quedan, tiradas) {
   let total = 0;
-  for (let n = 0; n < SIMULACIONES; n++) {
-    let dados = estado.dados.map((d, i) => (guardados[i] ? d : azar()));
+  for (const [primera, segundaTirada] of tiradas) {
+    let dados = estado.dados.map((d, i) => (guardados[i] ? d : primera[i]));
     let valor;
     if (canto === "abajo") {
       // Hay que dar vuelta uno de los que salieron: el mejor posible.
@@ -57,7 +59,7 @@ function simular(estado, guardados, canto, quedan, azar) {
     } else {
       if (quedan > 1) {
         const segunda = apartarRapido(dados);
-        dados = dados.map((d, i) => (segunda[i] ? d : azar()));
+        dados = dados.map((d, i) => (segunda[i] ? d : segundaTirada[i]));
       }
       valor = mejorJugada(estado, dados, false).valor;
     }
@@ -77,13 +79,15 @@ function elegirJugada(estado, azar) {
 
   const quedan = G.TIROS_POR_TURNO - s.tiro;
   const cantada = G.MODOS[s.modo].cantada;
+  const cinco = () => [azar(), azar(), azar(), azar(), azar()];
+  const tiradas = Array.from({ length: SIMULACIONES }, () => [cinco(), cinco()]);
   for (let mascara = 0; mascara < 31; mascara++) {
     const guardados = [0, 1, 2, 3, 4].map((i) => !!(mascara & (1 << i)));
     const apartados = guardados.filter(Boolean).length;
     // Con al menos un dado apartado se puede cantar; de arriba es igual que no cantar.
     const cantos = cantada && apartados > 0 ? ["", "abajo"] : [""];
     for (const canto of cantos) {
-      const valor = simular(s, guardados, canto, quedan, azar);
+      const valor = simular(s, guardados, canto, quedan, tiradas);
       if (valor > mejor.valor) mejor = { tipo: "tirar", guardados, canto, valor };
     }
   }
