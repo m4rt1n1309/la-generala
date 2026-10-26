@@ -26,7 +26,7 @@ export function crearMesa(selector) {
   const contenedor = document.querySelector(selector);
   const box = new DiceBox(selector, {
     assetPath: import.meta.env.BASE_URL,
-    sounds: false,
+    sounds: true, // golpes de los dados contra la mesa y entre ellos (mp3 en public/sounds)
     theme_surface: "green-felt",
     theme_colorset: "white",
     theme_material: "plastic",
@@ -221,6 +221,10 @@ export function crearMesa(selector) {
 
   return {
     lista,
+    // Prende o apaga el ruido de los dados (los mp3 se cargan igual, así se puede volver a prender).
+    silenciar(silencio) {
+      box.volume = silencio ? 0 : 100;
+    },
     // Encola el estado para mostrarlo después de lo que se esté animando
     // (también cuando solo cambiaron los dados apartados).
     sincronizar(estado) {

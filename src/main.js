@@ -34,6 +34,22 @@ const NOMBRES_BOTS = ["Bot Tito", "Bot Lola", "Bot Pancho", "Bot Coca", "Bot Ram
 const mesa = crearMesa("#dice-box");
 mesa.lista.then(() => ($("cargando").hidden = true));
 
+// Sonido de los dados: se recuerda en esta compu.
+function mostrarSonido(silencio) {
+  mesa.silenciar(silencio);
+  const b = $("sonido");
+  b.textContent = silencio ? "🔇" : "🔊";
+  b.title = silencio ? "Activar sonido" : "Silenciar";
+  b.setAttribute("aria-label", b.title);
+  b.setAttribute("aria-pressed", String(silencio));
+}
+mostrarSonido(guardado.leer("silencio") === "1");
+$("sonido").addEventListener("click", () => {
+  const silencio = $("sonido").getAttribute("aria-pressed") !== "true";
+  guardado.escribir("silencio", silencio ? "1" : "0");
+  mostrarSonido(silencio);
+});
+
 // --- Estado de la pantalla ---
 
 // juego: null (en el inicio) | { tipo: "local" } | { tipo: "online", codigo, uid, sala, dejarDeEscuchar }
