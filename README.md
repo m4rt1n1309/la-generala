@@ -42,7 +42,6 @@ Si cambiás `database.rules.json`, publicalas con `npm run deploy-rules` (o peg�
 ## Cómo se juega
 
 - Hasta 3 tiros por turno. Tocá un dado del panel para apartarlo: no vuelve al cubilete y se va a la bandeja, al pie de la mesa.
-- Los puntos de cada jugada no se muestran solos: tocá **Anotar** para verlos en la planilla y elegir dónde anotar (después del 3.er tiro aparecen directamente).
 - Escalera 20, Full 30 y Póker 40 (+5 si salen servidas). Generala 50; servida gana la partida. Doble Generala 100, solo si ya anotaste una Generala. La escalera 3-4-5-6-1 también vale.
 - **Cantada:** antes del 2.º y del 3.º tiro, si apartaste al menos un dado (con los 5 en el cubilete no se canta), cantás cuántos de los dados que tirás van **de abajo** y cuántos **de arriba**. Por ejemplo, con 4 dados para tirar: 2 de abajo y 2 de arriba, 3 de abajo y 1 de arriba, etc.
   - los **de arriba** quedan como salen;
