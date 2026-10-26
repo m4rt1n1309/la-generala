@@ -32,10 +32,10 @@ const app = disponible
         : firebaseConfig
     )
   : null;
-// Con el emulador, ?otro usa una identidad que no se guarda: sirve para probar con dos pestañas.
+// ?otro usa una identidad que no se guarda: sirve para probar con dos pestañas en el mismo navegador.
 const auth =
   app &&
-  (emulador && new URLSearchParams(location.search).has("otro")
+  (new URLSearchParams(location.search).has("otro")
     ? initializeAuth(app, { persistence: inMemoryPersistence })
     : getAuth(app));
 const db = app && getDatabase(app);
