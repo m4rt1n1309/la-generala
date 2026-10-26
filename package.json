@@ -6,13 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test test/*.test.js",
+    "emuladores": "npx --yes firebase-tools@10.9.2 emulators:start --only auth,database --project demo-generala",
+    "deploy-rules": "npx --yes firebase-tools@13.29.1 deploy --only database"
   },
   "dependencies": {
-    "@3d-dice/dice-box": "^1.1.4"
+    "@3d-dice/dice-box-threejs": "^0.0.12",
+    "firebase": "^10.12.2"
   },
   "devDependencies": {
-    "@3d-dice/dice-themes": "^0.2.1",
     "vite": "^5.4.11"
   }
 }

@@ -159,19 +159,6 @@ button { font: inherit; }
 .turno { margin: 0 0 2px; font-weight: 600; color: var(--acento); }
 .turno:empty { display: none; }
 
-/* Diálogo de nueva partida */
-.config {
-  border: none;
-  border-radius: 14px;
-  padding: 24px;
-  width: min(360px, calc(100vw - 32px));
-  background: var(--panel);
-  color: var(--texto);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-}
-.config::backdrop { background: rgba(0, 0, 0, 0.45); }
-.config h2 { margin: 0 0 16px; }
-.config form { display: flex; flex-direction: column; gap: 12px; }
 .nombres { display: flex; flex-direction: column; gap: 8px; }
 .campo { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--suave); }
 .campo input, .campo select {
@@ -208,3 +195,124 @@ button { font: inherit; }
   .layout { grid-template-columns: 1fr; grid-template-rows: 45vh auto; height: auto; }
   .mesa { margin: 12px; }
 }
+
+/* --- Online, cantos y pantallas de inicio --- */
+
+[hidden] { display: none !important; }
+
+.titulo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chip {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--fieltro);
+  color: #fff;
+}
+.chip:empty { display: none; }
+.sala-actual { margin: 2px 0 0; font-size: 0.85rem; color: var(--suave); }
+.estado.error, .error { color: var(--acento); }
+.error:empty { display: none; }
+.aviso {
+  margin: 6px 0 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #fde8e3;
+  color: var(--acento);
+  font-size: 0.85rem;
+}
+
+.botones { display: flex; gap: 8px; }
+.botones .btn-tirar { flex: 1; }
+.btn-tirar.abajo { background: #7d3c98; }
+
+.dado.voltear {
+  border-color: #7d3c98;
+  animation: titilar 0.9s ease-in-out infinite;
+}
+@keyframes titilar {
+  50% { box-shadow: 0 0 0 4px rgba(125, 60, 152, 0.35); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dado.voltear { animation: none; box-shadow: 0 0 0 3px rgba(125, 60, 152, 0.35); }
+}
+
+.pie { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+.pie .btn-secundario { margin-top: 0; }
+
+.btn-mini {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 0.75rem;
+  border-radius: 5px;
+  border: 1px solid var(--borde);
+  background: #fff;
+  color: var(--texto);
+  cursor: pointer;
+}
+.punto-off {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 3px;
+  border-radius: 50%;
+  background: #b9b1a6;
+  vertical-align: middle;
+}
+
+/* Pantallas encima de la mesa (inicio y sala de espera) */
+.pantalla {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  overflow-y: auto;
+  background: rgba(20, 30, 24, 0.55);
+}
+.tarjeta {
+  width: min(400px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+.tarjeta h2 { margin: 0; }
+.tarjeta h3 { margin: 0; font-size: 1rem; }
+.tarjeta .ayuda { margin: 0; }
+.bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--borde);
+}
+.nombres input, .unirse input {
+  font: inherit;
+  padding: 7px 9px;
+  border: 1px solid var(--borde);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--texto);
+}
+.unirse { display: flex; gap: 8px; }
+.unirse input { flex: 1; min-width: 0; text-transform: uppercase; letter-spacing: 0.2em; }
+.unirse .btn-secundario { margin-top: 0; }
+.codigo { letter-spacing: 0.15em; color: var(--acento); }
+
+.lista-jugadores { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.lista-jugadores li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: #fff;
+}
+.lista-jugadores li small { color: var(--suave); }
+.lista-jugadores li .btn-mini { margin-left: auto; }
+.lista-jugadores li.offline span { color: var(--suave); }

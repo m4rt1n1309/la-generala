@@ -1,0 +1,31 @@
+{
+  "rules": {
+    "salas": {
+      "$codigo": {
+        ".read": true,
+        "host": {
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid"
+        },
+        "creada": {
+          ".write": "auth != null && !data.exists()",
+          ".validate": "newData.val() === now"
+        },
+        "modo": {
+          ".write": "auth != null && (newData.parent().child('host').val() === auth.uid) && (!data.exists() || !newData.parent().child('partida').exists())",
+          ".validate": "newData.isString() && newData.val().matches(/^(comun|cantada|obligada|obligada-cantada)$/)"
+        },
+        "jugadores": {
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || root.child('salas').child($codigo).child('host').val() === auth.uid)",
+            ".validate": "!newData.exists() || (newData.hasChildren(['nombre', 'unido']) && newData.child('nombre').isString() && newData.child('nombre').val().length >= 1 && newData.child('nombre').val().length <= 16)"
+          }
+        },
+        "partida": {
+          ".write": "auth != null && (root.child('salas').child($codigo).child('host').val() === auth.uid || (data.exists() && data.child('estado').val() === 'jugando' && data.child('actual').val() === auth.uid))",
+          ".validate": "!newData.exists() || newData.hasChildren(['modo', 'jugadores', 'turno', 'actual', 'estado'])"
+        },
+        "$otro": { ".validate": false }
+      }
+    }
+  }
+}

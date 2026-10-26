@@ -1,9 +1,6 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  // dice-box carga sus mundos (offscreen/onscreen) con import() dinámico;
-  // si Vite lo pre-empaqueta, esas rutas se rompen.
-  optimizeDeps: {
-    exclude: ["@3d-dice/dice-box"],
-  },
+  // Rutas relativas: el mismo build anda en GitHub Pages (/la-generala/) y en la compu.
+  base: "./",
 });
